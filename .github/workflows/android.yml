@@ -10,58 +10,72 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     name: Build ChessMasterAI APK
     runs-on: ubuntu-latest
 
     steps:
+      # دریافت سورس پروژه
       - name: Checkout project
         uses: actions/checkout@v4
 
+      # نصب Java
       - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
+      # نصب Gradle بدون نیاز به gradlew
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.11.1'
 
+      # نصب Android SDK
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
         with:
           cmdline-tools-version: 15859902
           accept-android-sdk-licenses: true
           log-accepted-android-sdk-licenses: false
-          packages: |
-            platform-tools
-            platforms;android-36
-            build-tools;36.0.0
+          packages: 'platform-tools,platforms;android-36,build-tools;36.0.0'
 
+      # بررسی فایل‌های پروژه
       - name: Check project files
         run: |
+          echo "Checking Android project..."
           test -f settings.gradle.kts
           test -f build.gradle.kts
           test -f app/build.gradle.kts
           echo "Project files found!"
 
-      - name: Check Gradle
+      # بررسی Gradle
+      - name: Check Gradle version
         run: gradle --version
 
+      # اجرای تست‌ها
       - name: Run unit tests
         run: gradle --no-daemon testDebugUnitTest
 
-      - name: Build APK
+      # ساخت APK
+      - name: Build Debug APK
         run: gradle --no-daemon assembleDebug
 
+      # بررسی خروجی
       - name: Verify APK
         run: |
+          echo "Searching for APK..."
           find app/build/outputs/apk -name "*.apk"
           test -f app/build/outputs/apk/debug/app-debug.apk
+          echo "APK successfully generated!"
 
+      # آپلود APK
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
